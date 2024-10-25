@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import random
 
-RING_RADIUS = 5.0
+RING_RADIUS = 5
 NUM_ACTIONS = 40
-POPULATION_SIZE = 100
+POPULATION_SIZE = 1000
 MUTATION_RATE = 0.1
 CROSSOVER_RATE = 0.5
-NUM_GENERATIONS = 100
-FRAMES_PER_ACTION = 30 
+NUM_GENERATIONS = 1000
+FRAMES_PER_ACTION = 3
 ROBOT_RADIUS = 0.25
 
 class Robot:
@@ -82,8 +82,11 @@ def fitness_function(actions_robot_1, actions_robot_2):
     push_bonus = 0  
     avoidance_penalty = 0
     edge_push_bonus = 0  
-    center_stay_bonus_robot1 = 0
-    center_stay_bonus_robot2 = 0
+    #center_stay_bonus_robot1 = 0
+    #center_stay_bonus_robot2 = 0
+    edge_touch_penalty_robot1 = 0
+    edge_touch_penalty_robot2 = 0
+    long_lasting_battle = 0
 
     for action in range(NUM_ACTIONS):
         
@@ -105,28 +108,37 @@ def fitness_function(actions_robot_1, actions_robot_2):
             robot2.position += push_strength * push_direction  
             robot1.position -= push_strength * push_direction  
 
+
             push_bonus += push_strength
-            
+
+
             distance_to_edge_robot2 = RING_RADIUS - np.linalg.norm(robot2.position)
             if distance_to_edge_robot2 < 1.0:  
-                edge_push_bonus += (1.0 - distance_to_edge_robot2) * 5  
+                edge_push_bonus += (1.0 - distance_to_edge_robot2) * 5
         
-        if distance_between > 3.0:  
-            avoidance_penalty += (distance_between - 3.0) * 2  
+        #if distance_between > 3.0:  
+        avoidance_penalty += (distance_between - 3.0) * 2  
         
-        center_stay_bonus_robot1 += max(0, RING_RADIUS - np.linalg.norm(robot1.position)) * 0.5
-        center_stay_bonus_robot2 += max(0, RING_RADIUS - np.linalg.norm(robot2.position)) * 0.5
+        #center_stay_bonus_robot1 += max(0, RING_RADIUS - np.linalg.norm(robot1.position)) * 0.5
+        #center_stay_bonus_robot2 += max(0, RING_RADIUS - np.linalg.norm(robot2.position)) * 0.5
+
+        edge_touch_penalty_robot1 += np.exp(np.linalg.norm(robot1.position))
+        edge_touch_penalty_robot2 -= np.exp(np.linalg.norm(robot1.position))
+
+        edge_touch_penalty_robot2 += np.exp(np.linalg.norm(robot2.position))
+        edge_touch_penalty_robot1 -= np.exp(np.linalg.norm(robot2.position))
+
+        long_lasting_battle += 1
+        
 
         if not robot1.is_in_ring():
             return 0.0  
         if not robot2.is_in_ring():
-            return 1.0 + proximity_bonus + push_bonus + edge_push_bonus - avoidance_penalty + center_stay_bonus_robot2
-
+            return 1.0 + push_bonus + proximity_bonus + edge_push_bonus - avoidance_penalty + long_lasting_battle #+ center_stay_bonus_robot2
     
-    fitness_robot1 = proximity_bonus + push_bonus + edge_push_bonus - avoidance_penalty + center_stay_bonus_robot1
-    fitness_robot2 = proximity_bonus + push_bonus + edge_push_bonus - avoidance_penalty + center_stay_bonus_robot2
+    fitness_robot1 = push_bonus - edge_touch_penalty_robot1 + proximity_bonus + edge_push_bonus  - avoidance_penalty + long_lasting_battle#+ center_stay_bonus_robot1
+    fitness_robot2 = push_bonus - edge_touch_penalty_robot2 + proximity_bonus + edge_push_bonus  - avoidance_penalty + long_lasting_battle#+ center_stay_bonus_robot2
 
-    
     return fitness_robot1 if fitness_robot1 > fitness_robot2 else fitness_robot2
 
 def selection(population, fitness_scores):
@@ -195,8 +207,8 @@ def plot_simulation():
     ax.add_artist(ring)
     
     # Create points for the two robots
-    robot1_dot, = ax.plot([], [], 'ro', label="Robot 1", markersize=10)
-    robot2_dot, = ax.plot([], [], 'bo', label="Robot 2", markersize=10)
+    robot1_dot, = ax.plot([], [], 'ro', label="Robot 1", markersize=20)
+    robot2_dot, = ax.plot([], [], 'bo', label="Robot 2", markersize=20)
 
     robot1 = Robot()
     robot2 = Robot()
